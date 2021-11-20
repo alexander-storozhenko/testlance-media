@@ -3,7 +3,9 @@ require 'rbconfig'
 module API
   module Videos
     class Upload < Grape::API
-      # include Defaults
+      include Auth
+
+      # authenticate!
 
       format :json
 
@@ -14,11 +16,19 @@ module API
       post 'upload' do
         content_type 'multipart/form-data'
 
-        video = params[:video]
-        video_path = video[:tempfile].path.strip
+        video_file = params[:video]
+        video = Video.create!(user_id: @user_id)
 
-        VideoUploadJob.perform_now(1, video_path)
+        attachment = {
+          filename: video_file[:filename],
+          type: video_file[:type],
+          headers: video_file[:head],
+          tempfile: video_file[:tempfile]
+        }
 
+        video.attachment = ActionDispatch::Http::UploadedFile.new(attachment)
+
+        video.save!
         ''
       rescue StandardError => e
         error! e.message
